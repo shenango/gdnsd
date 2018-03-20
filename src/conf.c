@@ -287,7 +287,7 @@ cfg_t* conf_load(const vscf_data_t* cfg_root, const socks_cfg_t* socks_cfg, cons
     gdnsd_plugins_set_search_path(psearch_array);
 
     // Phase 1 of service_types config
-    gdnsd_mon_cfg_stypes_p1(stypes_cfg);
+    // gdnsd_mon_cfg_stypes_p1(stypes_cfg);
 
     // Load plugins
     vscf_data_t* plugins_hash = cfg_root ? vscf_hash_get_data_byconstkey(cfg_root, "plugins", true) : NULL;
@@ -319,7 +319,7 @@ cfg_t* conf_load(const vscf_data_t* cfg_root, const socks_cfg_t* socks_cfg, cons
     gdnsd_plugins_configure_all(socks_cfg->num_dns_threads);
 
     // Phase 2 of service_types config
-    gdnsd_mon_cfg_stypes_p2(stypes_cfg);
+    // gdnsd_mon_cfg_stypes_p2(stypes_cfg);
 
     // register a hook for plugin cleanup callbacks
     gdnsd_atexit_debug(plugins_cleanup);
@@ -329,7 +329,7 @@ cfg_t* conf_load(const vscf_data_t* cfg_root, const socks_cfg_t* socks_cfg, cons
         vscf_hash_iterate_const(cfg_root, true, bad_key, "top-level config");
 
     // admin_state checking, can fail fatally
-    gdnsd_mon_check_admin_file();
+    // gdnsd_mon_check_admin_file();
 
     return cfg;
 }

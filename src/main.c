@@ -28,7 +28,7 @@
 #include "statio.h"
 #include "ztree.h"
 #include "zsrc_rfc1035.h"
-#include "zsrc_djb.h"
+// #include "zsrc_djb.h"
 
 #include <gdnsd-prot/plugapi.h>
 #include <gdnsd-prot/misc.h>
@@ -56,7 +56,7 @@
 
 // ev loop used for monitoring and statio
 // (which shared a thread as well)
-static struct ev_loop* mon_loop = NULL;
+// static struct ev_loop* mon_loop = NULL;
 
 // custom atexit-like stuff, only for resource
 //   de-allocation in debug builds to check for leaks
@@ -83,8 +83,8 @@ static void atexit_debug_execute(void) { }
 
 #endif
 
-F_NONNULL F_NORETURN
-static void syserr_for_ev(const char* msg) { log_fatal("%s: %s", msg, dmn_logf_errno()); }
+// F_NONNULL F_NORETURN
+// static void syserr_for_ev(const char* msg) { log_fatal("%s: %s", msg, dmn_logf_errno()); }
 
 F_NONNULL F_NORETURN
 static void usage(const char* argv0) {
@@ -117,38 +117,38 @@ static void usage(const char* argv0) {
 }
 
 // thread entry point for zone data reloader thread
-static void* zone_data_runtime(void* unused V_UNUSED) {
-    gdnsd_thread_setname("gdnsd-zones");
+// static void* zone_data_runtime(void* unused V_UNUSED) {
+//     // gdnsd_thread_setname("gdnsd-zones");
 
-    struct ev_loop* zdata_loop = ev_loop_new(EVFLAG_AUTO);
-    if(!zdata_loop)
-        log_fatal("Could not initialize the zone data libev loop");
+//     struct ev_loop* zdata_loop = ev_loop_new(EVFLAG_AUTO);
+//     if(!zdata_loop)
+//         log_fatal("Could not initialize the zone data libev loop");
 
-    zsrc_djb_runtime_init(zdata_loop);
-    zsrc_rfc1035_runtime_init(zdata_loop);
+//     zsrc_djb_runtime_init(zdata_loop);
+//     zsrc_rfc1035_runtime_init(zdata_loop);
 
-    ev_run(zdata_loop, 0);
+//     ev_run(zdata_loop, 0);
 
-    dmn_assert(0); // should never be reached as loop never terminates
-    ev_loop_destroy(zdata_loop);
-    return NULL;
-}
+//     dmn_assert(0); // should never be reached as loop never terminates
+//     ev_loop_destroy(zdata_loop);
+//     return NULL;
+// }
 
 // thread entry point for monitoring (+statio) thread
-F_NONNULL
-static void* mon_runtime(void* scfg_asvoid) {
-    const socks_cfg_t* socks_cfg = scfg_asvoid;
+// F_NONNULL
+// static void* mon_runtime(void* scfg_asvoid) {
+//     const socks_cfg_t* socks_cfg = scfg_asvoid;
 
-    gdnsd_thread_setname("gdnsd-mon");
+//     gdnsd_thread_setname("gdnsd-mon");
 
-    // mon_start already queued up its events in mon_loop earlier...
-    statio_start(mon_loop, socks_cfg);
-    ev_run(mon_loop, 0);
+//     mon_start already queued up its events in mon_loop earlier...
+//     statio_start(mon_loop, socks_cfg);
+//     ev_run(mon_loop, 0);
 
-    dmn_assert(0); // should never be reached as loop never terminates
-    ev_loop_destroy(mon_loop);
-    return NULL;
-}
+//     dmn_assert(0); // should never be reached as loop never terminates
+//     ev_loop_destroy(mon_loop);
+//     return NULL;
+// }
 
 F_NONNULL
 static void start_threads(socks_cfg_t* socks_cfg) {
@@ -174,16 +174,16 @@ static void start_threads(socks_cfg_t* socks_cfg) {
         if(t->is_udp)
             pthread_err = pthread_create(&t->threadid, &attribs, &dnsio_udp_start, t);
         else
-            pthread_err = pthread_create(&t->threadid, &attribs, &dnsio_tcp_start, t);
+            dmn_assert(0);
         if(pthread_err)
             log_fatal("pthread_create() of DNS thread %u (for %s:%s) failed: %s",
                 i, t->is_udp ? "UDP" : "TCP", dmn_logf_anysin(&t->ac->addr), dmn_logf_strerror(pthread_err));
     }
 
-    pthread_t zone_data_threadid;
-    pthread_err = pthread_create(&zone_data_threadid, &attribs, &zone_data_runtime, NULL);
-    if(pthread_err)
-        log_fatal("pthread_create() of zone data thread failed: %s", dmn_logf_strerror(pthread_err));
+    // pthread_t zone_data_threadid;
+    // pthread_err = pthread_create(&zone_data_threadid, &attribs, &zone_data_runtime, NULL);
+    // if(pthread_err)
+        // log_fatal("pthread_create() of zone data thread failed: %s", dmn_logf_strerror(pthread_err));
 
     // This waits for all of the stat structures to be allocated
     //  by the i/o threads before continuing on.  They must be ready
@@ -191,10 +191,10 @@ static void start_threads(socks_cfg_t* socks_cfg) {
     //  those stat structures
     dnspacket_wait_stats(socks_cfg);
 
-    pthread_t mon_threadid;
-    pthread_err = pthread_create(&mon_threadid, &attribs, &mon_runtime, socks_cfg);
-    if(pthread_err)
-        log_fatal("pthread_create() of monitoring thread failed: %s", dmn_logf_strerror(pthread_err));
+    // pthread_t mon_threadid;
+    // pthread_err = pthread_create(&mon_threadid, &attribs, &mon_runtime, socks_cfg);
+    // if(pthread_err)
+    //     log_fatal("pthread_create() of monitoring thread failed: %s", dmn_logf_strerror(pthread_err));
 
     // Restore the original mask in the main thread, so
     //  we can continue handling signals like normal
@@ -356,8 +356,8 @@ int main(int argc, char** argv) {
         .force_zss = false,
         .force_zsd = false,
         .debug = false,
-        .foreground = false,
-        .use_syslog = true,
+        .foreground = true,
+        .use_syslog = false,
     };
     action_t action = parse_args(argc, argv, &copts);
 
@@ -380,8 +380,8 @@ int main(int argc, char** argv) {
     }
 
     // All simple/check actions are implicitly foreground invocations
-    if(!will_start)
-        copts.foreground = true;
+    // if(!will_start)
+        // copts.foreground = true;
 
     // Do not allow disabling syslog when attempting to daemonize
     //   without the foreground flag, as this would result in
@@ -469,7 +469,7 @@ int main(int argc, char** argv) {
     socks_dns_lsocks_init(socks_cfg);
 
     // init the stats summing/output code + listening sockets (again no bind yet)
-    statio_init(socks_cfg);
+    // statio_init(socks_cfg);
 
     // set up our pcall for socket binding later
     unsigned bind_socks_funcidx = dmn_add_pcall(socks_helper_bind_all);
@@ -499,16 +499,16 @@ int main(int argc, char** argv) {
     dmn_secure(cfg->weaker_security);
 
     // Set up libev error callback
-    ev_set_syserr_cb(&syserr_for_ev);
+    // ev_set_syserr_cb(&syserr_for_ev);
 
     // Construct the monitoring loop, for monitors + statio,
     //   which will be executed in another thread for runtime
-    mon_loop = ev_loop_new(EVFLAG_AUTO);
-    if(!mon_loop)
-        log_fatal("Could not initialize the mon libev loop");
+    // mon_loop = ev_loop_new(EVFLAG_AUTO);
+    // if(!mon_loop)
+        // log_fatal("Could not initialize the mon libev loop");
 
     // set up monitoring, which expects an initially empty loop
-    gdnsd_mon_start(mon_loop);
+    // gdnsd_mon_start(mon_loop);
 
     // Call plugin pre-run actions
     gdnsd_plugins_action_pre_run();
@@ -594,7 +594,7 @@ int main(int argc, char** argv) {
                 break;
             case SIGUSR1:
                 log_info("Received USR1 signal");
-                zsrc_djb_sigusr1();
+                // zsrc_djb_sigusr1();
                 zsrc_rfc1035_sigusr1();
                 break;
             case SIGHUP:
@@ -607,7 +607,7 @@ int main(int argc, char** argv) {
     }
 
     // Ask statio thread to send final stats to the log
-    statio_final_stats();
+    // statio_final_stats();
 
     // let newer versions of systemd know what's going on
     //  in the case the int/term sig came from outside
@@ -620,7 +620,7 @@ int main(int argc, char** argv) {
     atexit_debug_execute();
 
     // wait for stats thread to finish logging request
-    statio_final_stats_wait();
+    // statio_final_stats_wait();
 
     // Restore normal signal mask
     if(pthread_sigmask(SIG_SETMASK, &sigmask_prev, NULL))

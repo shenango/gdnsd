@@ -203,11 +203,11 @@ plugins_plugin_extmon_la_LIBADD   = plugins/libextmon_comms.la
 
 # geoip + metafo
 
-bin_PROGRAMS += plugins/gdnsd_geoip_test
-plugins_gdnsd_geoip_test_SOURCES  = plugins/gdnsd_geoip_test.c
-plugins_gdnsd_geoip_test_CFLAGS   = $(CFLAGS_PIE)
-plugins_gdnsd_geoip_test_LDFLAGS  = $(LDFLAGS_PIE)
-plugins_gdnsd_geoip_test_LDADD    = libgdmaps/libgdmaps.la libgdnsd/libgdnsd.la $(LIBGDNSD_LIBS)
+#bin_PROGRAMS += plugins/gdnsd_geoip_test
+#plugins_gdnsd_geoip_test_SOURCES  = plugins/gdnsd_geoip_test.c
+#plugins_gdnsd_geoip_test_CFLAGS   = $(CFLAGS_PIE)
+#plugins_gdnsd_geoip_test_LDFLAGS  = $(LDFLAGS_PIE)
+#plugins_gdnsd_geoip_test_LDADD    = libgdmaps/libgdmaps.la libgdnsd/libgdnsd.la $(LIBGDNSD_LIBS)
 
 plugins_plugin_geoip_la_SOURCES   = plugins/geoip.c plugins/meta_core.inc
 plugins_plugin_geoip_la_LDFLAGS   = -avoid-version -module

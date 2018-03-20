@@ -16,7 +16,7 @@
  * along with gdnsd.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+#if 0
 #ifndef GDNSD_DNSIO_TCP_H
 #define GDNSD_DNSIO_TCP_H
 
@@ -39,3 +39,4 @@ F_NONNULL
 void tcp_dns_listen_setup(dns_thread_t* t);
 
 #endif // GDNSD_DNSIO_TCP_H
+#endif

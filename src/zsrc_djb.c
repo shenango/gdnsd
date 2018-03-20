@@ -16,7 +16,7 @@
  * along with gdnsd.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+#if 0
 #include <config.h>
 #include "zsrc_djb.h"
 
@@ -125,3 +125,4 @@ void zsrc_djb_runtime_init(struct ev_loop* loop) {
     ev_async_init(sigusr1_waker, sigusr1_cb);
     ev_async_start(loop, sigusr1_waker);
 }
+#endif

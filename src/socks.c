@@ -22,7 +22,7 @@
 
 #include "statio.h"
 #include "dnsio_udp.h"
-#include "dnsio_tcp.h"
+// #include "dnsio_tcp.h"
 
 #include <gdnsd/alloc.h>
 #include <gdnsd/misc.h>
@@ -39,24 +39,24 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <netinet/tcp.h>
+// #include <netinet/tcp.h>
 
 // Global access, only used in a few places, probably
 //   will be removable after future refactors
 socks_cfg_t* scfg = NULL;
 
 // The "default defaults" for various address-level things
-static const unsigned http_port_def_default = 3506U;
+// static const unsigned http_port_def_default = 3506U;
 static const dns_addr_t addr_defs_defaults = {
     .autoscan = false,
-    .dns_port = 53U,
+    .dns_port = 5003U,
     .udp_recv_width = 8U,
     .udp_rcvbuf = 0U,
     .udp_sndbuf = 0U,
     .udp_threads = 1U,
     .tcp_clients_per_thread = 128U,
     .tcp_timeout = 5U,
-    .tcp_threads = 1U,
+    .tcp_threads = 0U,
 };
 
 static const socks_cfg_t socks_cfg_defaults = {
@@ -112,25 +112,25 @@ static void make_addr(const char* lspec_txt, const unsigned def_port, dmn_anysin
         } \
     } while(0)
 
-F_NONNULLX(1)
-static void process_http_listen(socks_cfg_t* socks_cfg, vscf_data_t* http_listen_opt, const unsigned def_http_port) {
-    if(!http_listen_opt || !vscf_array_get_len(http_listen_opt)) {
-        socks_cfg->num_http_addrs = 2;
-        socks_cfg->http_addrs = xcalloc(socks_cfg->num_http_addrs, sizeof(dmn_anysin_t));
-        make_addr("0.0.0.0", def_http_port, socks_cfg->http_addrs);
-        make_addr("::", def_http_port, &socks_cfg->http_addrs[1]);
-    }
-    else {
-        socks_cfg->num_http_addrs = vscf_array_get_len(http_listen_opt);
-        socks_cfg->http_addrs = xcalloc(socks_cfg->num_http_addrs, sizeof(dmn_anysin_t));
-        for(unsigned i = 0; i < socks_cfg->num_http_addrs; i++) {
-            vscf_data_t* lspec = vscf_array_get_data(http_listen_opt, i);
-            if(!vscf_is_simple(lspec))
-                log_fatal("Config option 'http_listen': all listen specs must be strings");
-            make_addr(vscf_simple_get_data(lspec), def_http_port, &socks_cfg->http_addrs[i]);
-        }
-    }
-}
+// F_NONNULLX(1)
+// static void process_http_listen(socks_cfg_t* socks_cfg, vscf_data_t* http_listen_opt, const unsigned def_http_port) {
+//     if(!http_listen_opt || !vscf_array_get_len(http_listen_opt)) {
+//         socks_cfg->num_http_addrs = 2;
+//         socks_cfg->http_addrs = xcalloc(socks_cfg->num_http_addrs, sizeof(dmn_anysin_t));
+//         make_addr("0.0.0.0", def_http_port, socks_cfg->http_addrs);
+//         make_addr("::", def_http_port, &socks_cfg->http_addrs[1]);
+//     }
+//     else {
+//         socks_cfg->num_http_addrs = vscf_array_get_len(http_listen_opt);
+//         socks_cfg->http_addrs = xcalloc(socks_cfg->num_http_addrs, sizeof(dmn_anysin_t));
+//         for(unsigned i = 0; i < socks_cfg->num_http_addrs; i++) {
+//             vscf_data_t* lspec = vscf_array_get_data(http_listen_opt, i);
+//             if(!vscf_is_simple(lspec))
+//                 log_fatal("Config option 'http_listen': all listen specs must be strings");
+//             make_addr(vscf_simple_get_data(lspec), def_http_port, &socks_cfg->http_addrs[i]);
+//         }
+//     }
+// }
 
 F_NONNULL F_PURE
 static bool dns_addr_is_dupe(const socks_cfg_t* socks_cfg, const dmn_anysin_t* new_addr) {
@@ -328,12 +328,12 @@ socks_cfg_t* socks_conf_load(const vscf_data_t* cfg_root) {
     memcpy(socks_cfg, &socks_cfg_defaults, sizeof(*socks_cfg));
 
     vscf_data_t* listen_opt = NULL;
-    vscf_data_t* http_listen_opt = NULL;
+    // vscf_data_t* http_listen_opt = NULL;
 
     // These are initially populated with static defaults, then updated
     //   with global options to become the defaults for per-address-level
     //   settings within process_(http_)listen()
-    unsigned http_port_def = http_port_def_default;
+    // unsigned http_port_def = http_port_def_default;
     dns_addr_t addr_defs;
     memcpy(&addr_defs, &addr_defs_defaults, sizeof(addr_defs));
 
@@ -341,7 +341,7 @@ socks_cfg_t* socks_conf_load(const vscf_data_t* cfg_root) {
     if(options) {
         CFG_OPT_UINT_ALTSTORE(options, max_http_clients, 1LU, 65535LU, socks_cfg->max_http_clients);
         CFG_OPT_UINT_ALTSTORE(options, http_timeout, 3LU, 60LU, socks_cfg->http_timeout);
-        CFG_OPT_UINT_ALTSTORE(options, http_port, 1LU, 65535LU, http_port_def);
+        // CFG_OPT_UINT_ALTSTORE(options, http_port, 1LU, 65535LU, http_port_def);
         CFG_OPT_UINT_ALTSTORE(options, dns_port, 1LU, 65535LU, addr_defs.dns_port);
         CFG_OPT_UINT_ALTSTORE(options, udp_recv_width, 1LU, 64LU, addr_defs.udp_recv_width);
         CFG_OPT_UINT_ALTSTORE(options, udp_rcvbuf, 4096LU, 1048576LU, addr_defs.udp_rcvbuf);
@@ -363,10 +363,10 @@ socks_cfg_t* socks_conf_load(const vscf_data_t* cfg_root) {
         }
 
         listen_opt = vscf_hash_get_data_byconstkey(options, "listen", true);
-        http_listen_opt = vscf_hash_get_data_byconstkey(options, "http_listen", true);
+        // http_listen_opt = vscf_hash_get_data_byconstkey(options, "http_listen", true);
     }
 
-    process_http_listen(socks_cfg, http_listen_opt, http_port_def);
+    // process_http_listen(socks_cfg, http_listen_opt, http_port_def);
     process_listen(socks_cfg, listen_opt, &addr_defs);
 
     return socks_cfg;
@@ -425,7 +425,7 @@ void socks_helper_bind_all(void) {
             if(!socks_helper_bind(t->is_udp ? "UDP DNS" : "TCP DNS", t->sock, &t->ac->addr, t->ac->autoscan))
                 t->bind_success = true;
     }
-    statio_bind_socks();
+    // statio_bind_socks();
 }
 
 bool socks_sock_is_bound_to(const int sock, const dmn_anysin_t* addr) {
@@ -467,7 +467,7 @@ bool socks_daemon_check_all(socks_cfg_t* socks_cfg, bool soft) {
             }
         }
     }
-    rv |= statio_check_socks(socks_cfg, soft);
+    // rv |= statio_check_socks(socks_cfg, soft);
     return rv;
 }
 
@@ -477,6 +477,6 @@ void socks_dns_lsocks_init(socks_cfg_t* socks_cfg) {
         if(t->is_udp)
             udp_sock_setup(t);
         else
-            tcp_dns_listen_setup(t);
+            dmn_assert(0);
     }
 }

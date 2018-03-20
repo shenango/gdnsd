@@ -47,7 +47,7 @@ static bool fail_fatally = false;
 //   zones_rfc1035_quiesce for runtime operations.
 static double full_quiesce = 0.0;
 
-#ifdef USE_INOTIFY
+#if 0
 
 #include <sys/inotify.h>
 
@@ -533,7 +533,7 @@ static void periodic_scan(struct ev_loop* loop, ev_timer* rtimer V_UNUSED, int r
 // ev stuff
 static ev_timer* reload_timer = NULL;
 
-#ifdef USE_INOTIFY
+#if 0
 
 // This is for event debugging only
 #define _maskcat(_x) \

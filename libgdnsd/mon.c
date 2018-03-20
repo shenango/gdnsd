@@ -16,6 +16,7 @@
  * along with gdnsd.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#if 0
 
 #include <config.h>
 #include <gdnsd/mon.h>
@@ -1070,3 +1071,4 @@ unsigned gdnsd_mon_stats_out_json(char* buf) {
 
     return (buf - buf_start);
 }
+#endif

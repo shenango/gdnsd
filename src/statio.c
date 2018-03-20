@@ -17,6 +17,8 @@
  *
  */
 
+#if 0
+
 #include <config.h>
 #include "statio.h"
 
@@ -806,3 +808,4 @@ void statio_start(struct ev_loop* statio_loop_arg, const socks_cfg_t* socks_cfg)
         ev_io_start(statio_loop, accept_watchers[i]);
     }
 }
+#endif

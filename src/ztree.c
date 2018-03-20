@@ -301,7 +301,7 @@ void ztree_init(const bool check_only) {
     ztree_root = xcalloc(1, sizeof(ztree_t));
     gdnsd_atexit_debug(ztree_atexit);
 
-    zsrc_djb_load_zones(check_only);
+    // zsrc_djb_load_zones(check_only);
     zsrc_rfc1035_load_zones(check_only);
 
     if(check_only)

@@ -16,7 +16,7 @@
  * along with gdnsd.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+#if 0
 #ifndef GDSND_STATIO_H
 #define GDSND_STATIO_H
 
@@ -44,3 +44,4 @@ void statio_final_stats(void);
 void statio_final_stats_wait(void);
 
 #endif // GDSND_STATIO_H
+#endif

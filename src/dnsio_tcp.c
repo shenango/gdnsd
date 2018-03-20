@@ -16,7 +16,7 @@
  * along with gdnsd.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+#if 0
 #include <config.h>
 #include "dnsio_tcp.h"
 
@@ -426,3 +426,4 @@ void* dnsio_tcp_start(void* thread_asvoid) {
 
     return NULL;
 }
+#endif
