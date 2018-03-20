@@ -126,7 +126,7 @@ typedef struct {
     char* full_fn;       // "etc/zones/example.com"
     const char* fn;      // ptr to "example.com" in above storage
     zone_t* zone;        // zone data
-    ev_timer* pending_event; // pending quiescence timer, NULL if no pending change
+    // ev_timer* pending_event; // pending quiescence timer, NULL if no pending change
     statcmp_t pending;   // lstat() info on pending update
     statcmp_t loaded;    // lstat() info on loaded data
 } zfile_t;
@@ -148,8 +148,8 @@ static void zf_delete(zfile_t* zf) {
         zone_delete(zf->zone);
     if(zf->full_fn)
         free(zf->full_fn);
-    if(zf->pending_event)
-        free(zf->pending_event);
+    // if(zf->pending_event)
+        // free(zf->pending_event);
     free(zf);
 }
 
@@ -323,11 +323,11 @@ static zone_t* zone_from_zf(zfile_t* zf, bool* retry_me) {
 }
 
 F_NONNULL
-static void quiesce_check(struct ev_loop* loop, ev_timer* timer, int revents V_UNUSED) {
-    dmn_assert(revents == EV_TIMER);
+static void quiesce_check(void* loop V_UNUSED, zfile_t* zf, int revents V_UNUSED) {
+    // dmn_assert(revents == EV_TIMER);
 
-    zfile_t* zf = timer->data;
-    dmn_assert(zf->pending_event == timer);
+    // zfile_t* zf = timer->data;
+    // dmn_assert(zf->pending_event == timer);
 
     // check lstat() again for a new change during quiesce period
     statcmp_t newstat;
@@ -359,8 +359,8 @@ static void quiesce_check(struct ev_loop* loop, ev_timer* timer, int revents V_U
                 if(z)
                      zone_delete(z);
                 memcpy(&zf->pending, &post_check, sizeof(zf->pending));
-                ev_timer_set(timer, full_quiesce, 0.);
-                ev_timer_start(loop, timer);
+                // ev_timer_set(timer, full_quiesce, 0.);
+                // ev_timer_start(loop, timer);
             }
             else {
                 if(z) {
@@ -371,21 +371,21 @@ static void quiesce_check(struct ev_loop* loop, ev_timer* timer, int revents V_U
                     if(zf->zone)
                         zone_delete(zf->zone);
                     zf->zone = z;
-                    free(zf->pending_event);
-                    zf->pending_event = NULL;
+                    // free(zf->pending_event);
+                    // zf->pending_event = NULL;
                 }
                 else {
                     if(fail_fatally)
                         log_fatal("rfc1035: Cannot load zonefile '%s', failing", zf->fn);
                     if(retry_me) {
                         log_debug("rfc1035: zonefile '%s' quiesce timer: zone loading failed due to file-level issues (permissions? locks?), will retry in %.3g seconds...", zf->fn, full_quiesce);
-                        ev_timer_set(timer, full_quiesce, 0.);
-                        ev_timer_start(loop, timer);
+                        // ev_timer_set(timer, full_quiesce, 0.);
+                        // ev_timer_start(loop, timer);
                     }
                     else {
                         log_debug("rfc1035: zonefile '%s' quiesce timer: zone parsing failed due to content issues, awaiting further fresh FS notification before trying again...", zf->fn);
-                        free(zf->pending_event);
-                        zf->pending_event = NULL;
+                        // free(zf->pending_event);
+                        // zf->pending_event = NULL;
                     }
                 }
             }
@@ -394,8 +394,8 @@ static void quiesce_check(struct ev_loop* loop, ev_timer* timer, int revents V_U
     else {
         log_debug("rfc1035: Change detected for already-pending zonefile '%s' via quiesce_check(), delaying %.3g secs for further changes...", zf->fn, full_quiesce);
         memcpy(&zf->pending, &newstat, sizeof(zf->pending));
-        ev_timer_set(timer, full_quiesce, 0.);
-        ev_timer_start(loop, timer);
+        // ev_timer_set(timer, full_quiesce, 0.);
+        // ev_timer_start(loop, timer);
     }
 }
 
@@ -406,7 +406,7 @@ static void quiesce_check(struct ev_loop* loop, ev_timer* timer, int revents V_U
 //   true -> scan_dir sort of case: no positive indication yet, must filter existing
 //     files based on whether stat() data changed before taking any action.
 F_NONNULL
-static void process_zonefile(const char* zfn, struct ev_loop* loop, const double initial_quiesce_time, const bool verify_statcmp) {
+static void process_zonefile(const char* zfn, void* loop, const double initial_quiesce_time, const bool verify_statcmp) {
     const char* fn;
     char* full_fn = gdnsd_str_combine(rfc1035_dir, zfn, &fn);
 
@@ -439,25 +439,27 @@ static void process_zonefile(const char* zfn, struct ev_loop* loop, const double
     //   by scandir() is what keeps check_missing() from thinking
     //   this zfile_t*'s target was deleted from the filesystem.
     current_zft->generation = generation;
-    if(current_zft->pending_event) { // we already had a pending change
-        if(!verify_statcmp || !statcmp_eq(&newstat, &current_zft->pending)) { // but it changed again!
-            log_debug("rfc1035: Change detected for already-pending zonefile '%s' via process_zonefile(), delaying %.3g secs for further changes...", current_zft->fn, full_quiesce);
-            memcpy(&current_zft->pending, &newstat, sizeof(current_zft->pending));
-            ev_timer_stop(loop, current_zft->pending_event);
-            ev_timer_set(current_zft->pending_event, full_quiesce, 0.);
-            ev_timer_start(loop, current_zft->pending_event);
-        }
-    }
-    else if(!verify_statcmp || !statcmp_eq(&newstat, &current_zft->loaded)) { // notification of change with no event currently pending
+    // if(current_zft->pending_event) { // we already had a pending change
+    //     if(!verify_statcmp || !statcmp_eq(&newstat, &current_zft->pending)) { // but it changed again!
+    //         log_debug("rfc1035: Change detected for already-pending zonefile '%s' via process_zonefile(), delaying %.3g secs for further changes...", current_zft->fn, full_quiesce);
+    //         memcpy(&current_zft->pending, &newstat, sizeof(current_zft->pending));
+    //         // ev_timer_stop(loop, current_zft->pending_event);
+    //         // ev_timer_set(current_zft->pending_event, full_quiesce, 0.);
+    //         // ev_timer_start(loop, current_zft->pending_event);
+    //     }
+    // }
+    // else
+     if(!verify_statcmp || !statcmp_eq(&newstat, &current_zft->loaded)) { // notification of change with no event currently pending
         if(statcmp_nx(&current_zft->loaded))
             log_debug("rfc1035: New zonefile '%s', delaying %.3g secs for further changes...", current_zft->fn, initial_quiesce_time);
         else
             log_debug("rfc1035: New change detected for stable zonefile '%s', delaying %.3g secs for further changes...", current_zft->fn, initial_quiesce_time);
         memcpy(&current_zft->pending, &newstat, sizeof(current_zft->pending));
-        current_zft->pending_event = xmalloc(sizeof(*current_zft->pending_event));
-        ev_timer_init(current_zft->pending_event, quiesce_check, initial_quiesce_time, 0.);
-        current_zft->pending_event->data = current_zft;
-        ev_timer_start(loop, current_zft->pending_event);
+        // current_zft->pending_event = xmalloc(sizeof(*current_zft->pending_event));
+        quiesce_check(NULL, current_zft, 0);
+        // ev_timer_init(current_zft->pending_event, quiesce_check, initial_quiesce_time, 0.);
+        // current_zft->pending_event->data = current_zft;
+        // ev_timer_start(loop, current_zft->pending_event);
     }
 }
 
@@ -472,7 +474,7 @@ static void unload_zones(void) {
     }
 }
 
-static void scan_dir(struct ev_loop* loop, double initial_quiesce_time) {
+static void scan_dir(void* loop, double initial_quiesce_time) {
     DIR* zdhandle = opendir(rfc1035_dir);
     if(!zdhandle) {
         log_err("rfc1035: Cannot open zones directory '%s': %s", rfc1035_dir, dmn_logf_strerror(errno));
@@ -778,11 +780,11 @@ void zsrc_rfc1035_load_zones(const bool check_only V_UNUSED) {
         inotify_initial_setup(); // no-op if no compile-time support
     if(gcfg->zones_strict_startup)
         fail_fatally = true;
-    struct ev_loop* temp_load_loop = ev_loop_new(EVFLAG_AUTO);
-    scan_dir(temp_load_loop, 0.0);
-    ev_run(temp_load_loop, 0);
-    ev_loop_destroy(temp_load_loop);
-    free(reload_timer);
+    // struct ev_loop* temp_load_loop = ev_loop_new(EVFLAG_AUTO);
+    scan_dir(NULL, 0.0);
+    // ev_run(temp_load_loop, 0);
+    // ev_loop_destroy(temp_load_loop);
+    // free(reload_timer);
     fail_fatally = false;
     gdnsd_atexit_debug(unload_zones);
 
@@ -800,28 +802,28 @@ void zsrc_rfc1035_load_zones(const bool check_only V_UNUSED) {
 }
 
 // we track the loop here for the async sigusr1 request
-static struct ev_loop* zones_loop = NULL;
-static ev_async* sigusr1_waker = NULL;
+// static struct ev_loop* zones_loop = NULL;
+// static ev_async* sigusr1_waker = NULL;
 
 // called within our thread/loop to take sigusr1 action
-F_NONNULL
-static void sigusr1_cb(struct ev_loop* loop, ev_async* w V_UNUSED, int revents V_UNUSED) {
-    log_info("rfc1035: received SIGUSR1 notification, scanning for changes...");
-    do_scandir(loop);
-}
+// F_NONNULL
+// static void sigusr1_cb(struct ev_loop* loop, ev_async* w V_UNUSED, int revents V_UNUSED) {
+    // log_info("rfc1035: received SIGUSR1 notification, scanning for changes...");
+    // do_scandir(loop);
+// }
 
 // called from main thread to feed ev_async
-void zsrc_rfc1035_sigusr1(void) {
-    dmn_assert(zones_loop); dmn_assert(sigusr1_waker);
-    ev_async_send(zones_loop, sigusr1_waker);
-}
+// void zsrc_rfc1035_sigusr1(void) {
+    // dmn_assert(zones_loop); dmn_assert(sigusr1_waker);
+    // ev_async_send(zones_loop, sigusr1_waker);
+// }
 
-void zsrc_rfc1035_runtime_init(struct ev_loop* loop) {
-    zones_loop = loop;
-    sigusr1_waker = xmalloc(sizeof(*sigusr1_waker));
-    ev_async_init(sigusr1_waker, sigusr1_cb);
-    ev_async_start(loop, sigusr1_waker);
+// void zsrc_rfc1035_runtime_init(struct ev_loop* loop) {
+    // zones_loop = loop;
+    // sigusr1_waker = xmalloc(sizeof(*sigusr1_waker));
+    // ev_async_init(sigusr1_waker, sigusr1_cb);
+    // ev_async_start(loop, sigusr1_waker);
 
-    if(gcfg->zones_rfc1035_auto)
-        initial_run(zones_loop);
-}
+    // if(gcfg->zones_rfc1035_auto)
+        // initial_run(NULL);
+// }

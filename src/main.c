@@ -595,7 +595,7 @@ int main(int argc, char** argv) {
             case SIGUSR1:
                 log_info("Received USR1 signal");
                 // zsrc_djb_sigusr1();
-                zsrc_rfc1035_sigusr1();
+                // zsrc_rfc1035_sigusr1();
                 break;
             case SIGHUP:
                 log_info("Received HUP signal (ignored; does nothing in this version!)");

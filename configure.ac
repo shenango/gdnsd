@@ -260,23 +260,6 @@ fi
 AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
 AM_CONDITIONAL(DO_SYSD_UNITFILE, [test -n "$with_systemdsystemunitdir"])
 
-# libev (which shouldn't use pkg-config anyways, but has
-#   to on Fedora because they munge the header path the author intended...)
-PKG_CHECK_MODULES([LIBEV],[libev >= 4.0],
-    CPPFLAGS="${CPPFLAGS} ${LIBEV_CFLAGS}"
-,
-    # try manually...
-    XLIBS=$LIBS
-    LIBS=""
-    AC_CHECK_LIB([ev],[ev_break],,AC_MSG_ERROR([libev 4.x library not found!]))
-    AC_CHECK_DECLS([EVBREAK_ALL],,AC_MSG_ERROR([libev 4.x headers not found!]),[
-        #include <ev.h>
-    ])
-    LIBEV_LIBS=$LIBS
-    LIBS=$XLIBS
-)
-AC_SUBST([LIBEV_LIBS])
-
 #---------------------------------------------
 # pthread setname (4 non-portable variants...)
 #---------------------------------------------
@@ -457,7 +440,7 @@ AC_SUBST([GDNSD_DEFPATH_LIBEXEC])
 # clump up all of the libgdnsd libdeps for re-use in LDADD for
 #   binaries that link libgdnsd on platforms where libtool's
 #   automatic dep resolution is disabled
-LIBGDNSD_LIBS="$MATH_LIB $QSBRLIBS $LIBEV_LIBS $LIBADD_DLOPEN $LIBUNWIND_LIBS"
+LIBGDNSD_LIBS="$MATH_LIB $QSBRLIBS $LIBADD_DLOPEN $LIBUNWIND_LIBS"
 AC_SUBST([LIBGDNSD_LIBS])
 
 # BUILD_FEATURES for cmdline output

@@ -191,11 +191,11 @@ plugins_plugin_extfile_la_LDFLAGS     = -avoid-version -module
 noinst_LTLIBRARIES += plugins/libextmon_comms.la
 plugins_libextmon_comms_la_SOURCES = plugins/extmon_comms.c plugins/extmon_comms.h
 
-pkglibexec_PROGRAMS += plugins/gdnsd_extmon_helper
-plugins_gdnsd_extmon_helper_SOURCES = plugins/extmon_helper.c plugins/extmon_comms.h
-plugins_gdnsd_extmon_helper_LDADD   = plugins/libextmon_comms.la libgdnsd/libgdnsd.la $(LIBGDNSD_LIBS)
-plugins_gdnsd_extmon_helper_CFLAGS  = $(CFLAGS_PIE)
-plugins_gdnsd_extmon_helper_LDFLAGS = $(LDFLAGS_PIE)
+#pkglibexec_PROGRAMS += plugins/gdnsd_extmon_helper
+#plugins_gdnsd_extmon_helper_SOURCES = plugins/extmon_helper.c plugins/extmon_comms.h
+#plugins_gdnsd_extmon_helper_LDADD   = plugins/libextmon_comms.la libgdnsd/libgdnsd.la $(LIBGDNSD_LIBS)
+#plugins_gdnsd_extmon_helper_CFLAGS  = $(CFLAGS_PIE)
+#plugins_gdnsd_extmon_helper_LDFLAGS = $(LDFLAGS_PIE)
 
 plugins_plugin_extmon_la_SOURCES  = plugins/extmon.c plugins/extmon_comms.h
 plugins_plugin_extmon_la_LDFLAGS  = -avoid-version -module
