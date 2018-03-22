@@ -49,6 +49,12 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
+AX_SHENANGO
+AC_SUBST([SHEN_CPPFLAGS])
+AC_SUBST([SHEN_LDFLAGS])
+AC_SUBST([SHEN_LIBS])
+
+
 AC_MSG_CHECKING([if compiling with clang])
 AC_COMPILE_IFELSE(
 [AC_LANG_PROGRAM([], [[
@@ -118,8 +124,6 @@ if test $harden = 1; then
     AS_CASE([$CFLAGS], [*-O[[1-6]]*], [CPPFLAGS="-D_FORTIFY_SOURCE=2 ${CPPFLAGS}"])
     HARDEN_COMPILER="-fstack-protector-all -ftrapv"
     HARDEN_LINKER="-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack"
-    AX_APPEND_COMPILE_FLAGS([-fPIE],[CFLAGS_PIE],[])
-    AX_APPEND_LINK_FLAGS([-pie],[LDFLAGS_PIE],[])
 fi
 AC_SUBST([CFLAGS_PIE])
 AC_SUBST([LDFLAGS_PIE])

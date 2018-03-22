@@ -17,6 +17,8 @@
  *
  */
 
+#include "shenango.h"
+
 #include <config.h>
 #include "main.h"
 
@@ -154,30 +156,30 @@ F_NONNULL
 static void start_threads(socks_cfg_t* socks_cfg) {
     // Block all signals using the pthreads interface while starting threads,
     //  which causes them to inherit the same mask.
-    sigset_t sigmask_all;
-    sigfillset(&sigmask_all);
-    sigset_t sigmask_prev;
-    sigemptyset(&sigmask_prev);
-    if(pthread_sigmask(SIG_SETMASK, &sigmask_all, &sigmask_prev))
-        log_fatal("pthread_sigmask() failed");
+    // sigset_t sigmask_all;
+    // sigfillset(&sigmask_all);
+    // sigset_t sigmask_prev;
+    // sigemptyset(&sigmask_prev);
+    // if(pthread_sigmask(SIG_SETMASK, &sigmask_all, &sigmask_prev))
+        // log_fatal("pthread_sigmask() failed");
 
     // system scope scheduling, joinable threads
-    pthread_attr_t attribs;
-    pthread_attr_init(&attribs);
-    pthread_attr_setdetachstate(&attribs, PTHREAD_CREATE_DETACHED);
-    pthread_attr_setscope(&attribs, PTHREAD_SCOPE_SYSTEM);
+    // pthread_attr_t attribs;
+    // pthread_attr_init(&attribs);
+    // pthread_attr_setdetachstate(&attribs, PTHREAD_CREATE_DETACHED);
+    // pthread_attr_setscope(&attribs, PTHREAD_SCOPE_SYSTEM);
 
     int pthread_err;
 
     for(unsigned i = 0; i < socks_cfg->num_dns_threads; i++) {
         dns_thread_t* t = &socks_cfg->dns_threads[i];
         if(t->is_udp)
-            pthread_err = pthread_create(&t->threadid, &attribs, &dnsio_udp_start, t);
+            pthread_err = thread_spawn(dnsio_udp_start, t);
         else
             dmn_assert(0);
-        if(pthread_err)
-            log_fatal("pthread_create() of DNS thread %u (for %s:%s) failed: %s",
-                i, t->is_udp ? "UDP" : "TCP", dmn_logf_anysin(&t->ac->addr), dmn_logf_strerror(pthread_err));
+        // if(pthread_err)
+            // log_fatal("pthread_create() of DNS thread %u (for %s:%s) failed: %s",
+                // i, t->is_udp ? "UDP" : "TCP", dmn_logf_anysin(&t->ac->addr), dmn_logf_strerror(pthread_err));
     }
 
     // pthread_t zone_data_threadid;
@@ -198,9 +200,9 @@ static void start_threads(socks_cfg_t* socks_cfg) {
 
     // Restore the original mask in the main thread, so
     //  we can continue handling signals like normal
-    if(pthread_sigmask(SIG_SETMASK, &sigmask_prev, NULL))
-        log_fatal("pthread_sigmask() failed");
-    pthread_attr_destroy(&attribs);
+    // if(pthread_sigmask(SIG_SETMASK, &sigmask_prev, NULL))
+        // log_fatal("pthread_sigmask() failed");
+    // pthread_attr_destroy(&attribs);
 }
 
 static void memlock_rlimits(const bool started_as_root) {
@@ -347,7 +349,10 @@ static action_t parse_args(const int argc, char** argv, cmdline_opts_t* copts) {
     usage(argv[0]);
 }
 
-int main(int argc, char** argv) {
+static int argc;
+
+static void _main(void *arg) {
+    char **argv = arg;
     // Parse args, getting the config path
     //   returning the action.  Exits on cmdline errors,
     //   does not use libdmn assert/log stuff.
@@ -557,18 +562,18 @@ int main(int argc, char** argv) {
         dmn_acquire_pidfile();
 
     // The signals we'll listen for below
-    sigset_t mainthread_sigs;
-    sigemptyset(&mainthread_sigs);
-    sigaddset(&mainthread_sigs, SIGINT);
-    sigaddset(&mainthread_sigs, SIGTERM);
-    sigaddset(&mainthread_sigs, SIGUSR1);
-    sigaddset(&mainthread_sigs, SIGHUP);
-
+    // sigset_t mainthread_sigs;
+    // sigemptyset(&mainthread_sigs);
+    // sigaddset(&mainthread_sigs, SIGINT);
+    // sigaddset(&mainthread_sigs, SIGTERM);
+    // sigaddset(&mainthread_sigs, SIGUSR1);
+    // sigaddset(&mainthread_sigs, SIGHUP);
+// 
     // Block the relevant signals before entering the sigwait() loop
-    sigset_t sigmask_prev;
-    sigemptyset(&sigmask_prev);
-    if(pthread_sigmask(SIG_BLOCK, &mainthread_sigs, &sigmask_prev))
-        log_fatal("pthread_sigmask() failed");
+    // sigset_t sigmask_prev;
+    // sigemptyset(&sigmask_prev);
+    // if(pthread_sigmask(SIG_BLOCK, &mainthread_sigs, &sigmask_prev))
+        // log_fatal("pthread_sigmask() failed");
 
     // Report success back to whoever invoked "start" or "restart" command...
     //  (or in the foreground case, kill our helper process)
@@ -576,66 +581,82 @@ int main(int argc, char** argv) {
     //  expecting correct signal actions after the starter exits
     dmn_finish();
 
-    int killed_by = 0;
-    while(!killed_by) {
-        int rcvd_sig = 0;
-        int sw_rv;
-        if((sw_rv = sigwait(&mainthread_sigs, &rcvd_sig)))
-            log_fatal("sigwait() failed with error %s", dmn_logf_strerror(sw_rv));
+    waitgroup_t wg;
+    waitgroup_init(&wg);
+    waitgroup_add(&wg, 1);
+    waitgroup_wait(&wg);
 
-        switch(rcvd_sig) {
-            case SIGTERM:
-                log_info("Received TERM signal, exiting...");
-                killed_by = SIGTERM;
-                break;
-            case SIGINT:
-                log_info("Received INT signal, exiting...");
-                killed_by = SIGINT;
-                break;
-            case SIGUSR1:
-                log_info("Received USR1 signal");
-                // zsrc_djb_sigusr1();
-                // zsrc_rfc1035_sigusr1();
-                break;
-            case SIGHUP:
-                log_info("Received HUP signal (ignored; does nothing in this version!)");
-                break;
-            default:
-                dmn_assert(0);
-                break;
-        }
-    }
+    // int killed_by = 0;
+    // while(!killed_by) {
+    //     int rcvd_sig = 0;
+    //     int sw_rv;
+    //     if((sw_rv = sigwait(&mainthread_sigs, &rcvd_sig)))
+    //         log_fatal("sigwait() failed with error %s", dmn_logf_strerror(sw_rv));
+
+    //     switch(rcvd_sig) {
+    //         case SIGTERM:
+    //             log_info("Received TERM signal, exiting...");
+    //             killed_by = SIGTERM;
+    //             break;
+    //         case SIGINT:
+    //             log_info("Received INT signal, exiting...");
+    //             killed_by = SIGINT;
+    //             break;
+    //         case SIGUSR1:
+    //             log_info("Received USR1 signal");
+    //             // zsrc_djb_sigusr1();
+    //             // zsrc_rfc1035_sigusr1();
+    //             break;
+    //         case SIGHUP:
+    //             log_info("Received HUP signal (ignored; does nothing in this version!)");
+    //             break;
+    //         default:
+    //             dmn_assert(0);
+    //             break;
+    //     }
+    // }
 
     // Ask statio thread to send final stats to the log
     // statio_final_stats();
 
     // let newer versions of systemd know what's going on
     //  in the case the int/term sig came from outside
-    dmn_sd_notify("STOPPING=1", true);
+    // dmn_sd_notify("STOPPING=1", true);
 
     // get rid of child procs (e.g. extmon helper)
-    gdnsd_kill_registered_children();
+    // gdnsd_kill_registered_children();
 
     // deallocate resources in debug mode
-    atexit_debug_execute();
+    // atexit_debug_execute();
 
     // wait for stats thread to finish logging request
     // statio_final_stats_wait();
 
     // Restore normal signal mask
-    if(pthread_sigmask(SIG_SETMASK, &sigmask_prev, NULL))
-        log_fatal("pthread_sigmask() failed");
+    // if(pthread_sigmask(SIG_SETMASK, &sigmask_prev, NULL))
+        // log_fatal("pthread_sigmask() failed");
 
-#ifdef DMN_COVERTEST_EXIT
-    // We have to use exit() when testing coverage, as raise()
-    //   skips over writing out gcov data
-    exit(0);
-#else
-    // kill self with same signal, so that our exit status is correct
-    //   for any parent/manager/whatever process that may be watching
-    raise(killed_by);
-#endif
+// #ifdef DMN_COVERTEST_EXIT
+//     // We have to use exit() when testing coverage, as raise()
+//     //   skips over writing out gcov data
+//     exit(0);
+// #else
+//     // kill self with same signal, so that our exit status is correct
+//     //   for any parent/manager/whatever process that may be watching
+//     raise(killed_by);
+// #endif
 
     // raise should not return
     dmn_assert(0);
+}
+
+int main(int argcount, char **argv) {
+    if (argcount < 2) {
+        fprintf(stderr, "need cfg file\n");
+        return 1;
+    }
+    char *cfg = argv[1];
+    argv[1] = argv[0];
+    argc = argcount - 1;
+    runtime_init(cfg, _main, argv + 1);
 }

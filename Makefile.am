@@ -6,7 +6,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
 # Common header path for libgdnsd's public gdnsd/*.h
-AM_CPPFLAGS = -I$(srcdir)/include
+AM_CPPFLAGS = -I$(srcdir)/include $(SHEN_CPPFLAGS)
 
 # Subdirectories to recurse into
 #  ("." first so testsuite stuff always after main stuff)
@@ -137,10 +137,10 @@ src_gdnsd_SOURCES = \
 # The reason for -I$(srcdir)/src below is that zscan_rfc1035.c is
 #   created in the builddir, so the compiler won't otherwise pick
 #   up includes from $(srcdir)/src when compiling it.
-src_gdnsd_CPPFLAGS = -I$(srcdir)/src $(AM_CPPFLAGS)
-src_gdnsd_CFLAGS = $(CFLAGS_PIE)
-src_gdnsd_LDFLAGS = $(LDFLAGS_PIE)
-src_gdnsd_LDADD = libgdnsd/libgdnsd.la $(LIBGDNSD_LIBS)
+src_gdnsd_CPPFLAGS = -I$(srcdir)/src $(AM_CPPFLAGS) $(SHEN_CPPFLAGS)
+src_gdnsd_CFLAGS = $(CFLAGS_PIE) $(SHEN_CPPFLAGS)
+src_gdnsd_LDFLAGS = $(LDFLAGS_PIE) $(SHEN_LDFLAGS)
+src_gdnsd_LDADD = libgdnsd/libgdnsd.la $(LIBGDNSD_LIBS) $(SHEN_LIBS)
 
 nodist_src_gdnsd_SOURCES = src/zscan_rfc1035.c
 src/zscan_rfc1035.c: src/zscan_rfc1035.rl
@@ -303,7 +303,7 @@ LIBGDNSD_PATHS = \
 	-DGDNSD_DEFPATH_LIB='"$(GDNSD_DEFPATH_LIB)"' \
 	-DGDNSD_DEFPATH_LIBEXEC='"$(GDNSD_DEFPATH_LIBEXEC)"'
 
-libgdnsd_libgdnsd_la_CPPFLAGS = $(LIBGDNSD_PATHS) $(AM_CPPFLAGS)
+libgdnsd_libgdnsd_la_CPPFLAGS = $(LIBGDNSD_PATHS) $(AM_CPPFLAGS) $(SHEN_CPPFLAGS)
 libgdnsd_libgdnsd_la_LDFLAGS = -shared -avoid-version
 libgdnsd_libgdnsd_la_LIBADD  = $(LIBGDNSD_LIBS)
 
