@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -104,3 +105,4 @@ static const uint8_t* map_get_dclist(const unsigned mapnum, const client_info_t*
 #define CB_RES plugin_metafo_resolve
 #define META_MAP_ADMIN 0
 #include "meta_core.inc"
+#endif

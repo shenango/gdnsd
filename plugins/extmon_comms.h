@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -95,3 +96,4 @@ static bool emc_decode_mon_failed(const uint32_t data) {
 }
 
 #endif // GDNSD_EXTMON_COMMS_H
+#endif

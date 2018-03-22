@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -220,3 +221,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+#endif

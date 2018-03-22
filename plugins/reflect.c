@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -77,3 +78,4 @@ gdnsd_sttl_t plugin_reflect_resolve(unsigned resnum, const uint8_t* origin V_UNU
 
     return GDNSD_STTL_TTL_MAX;
 }
+#endif

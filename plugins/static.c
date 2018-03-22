@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com> and Jay Reitz <jreitz@gmail.com>
  *
  * This file is part of gdnsd.
@@ -197,3 +198,4 @@ void plugin_static_init_monitors(struct ev_loop* mon_loop V_UNUSED) {
     for(unsigned i = 0; i < num_mons; i++)
         gdnsd_mon_sttl_updater(static_mons[i]->idx, static_mons[i]->svc->static_sttl);
 }
+#endif

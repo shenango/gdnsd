@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -470,3 +471,4 @@ void plugin_extmon_start_monitors(struct ev_loop* mon_loop) {
             bump_local_timeout(mon_loop, &mons[i]);
     }
 }
+#endif

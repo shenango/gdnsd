@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -104,3 +105,4 @@ static unsigned map_get_mon_idx(const unsigned mapnum, const unsigned dcnum) {
 #define CB_RES plugin_geoip_resolve
 #define META_MAP_ADMIN 1
 #include "meta_core.inc"
+#endif

@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2014 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -300,3 +301,4 @@ void plugin_extfile_init_monitors(struct ev_loop* mon_loop V_UNUSED) {
         process_file(svc);
     }
 }
+#endif

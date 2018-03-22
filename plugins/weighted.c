@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2014 Anton Tolchanov <anton.tolchanov@gmail.com>,
  * Brandon L Black <blblack@gmail.com>, and Jay Reitz <jreitz@gmail.com>
  *
@@ -915,3 +916,4 @@ gdnsd_sttl_t plugin_weighted_resolve(unsigned resnum, const uint8_t* origin, con
     assert_valid_sttl(rv);
     return rv;
 }
+#endif

@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -273,3 +274,4 @@ gdnsd_sttl_t plugin_simplefo_resolve(unsigned resnum, const uint8_t* origin V_UN
     assert_valid_sttl(rv);
     return rv;
 }
+#endif

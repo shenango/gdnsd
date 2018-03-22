@@ -1,3 +1,4 @@
+#if 0
 /* Copyright © 2012 Brandon L Black <blblack@gmail.com>
  *
  * This file is part of gdnsd.
@@ -234,3 +235,4 @@ extmon_cmd_t* emc_read_command(const int fd) {
     }
     return NULL;
 }
+#endif
