@@ -24,6 +24,9 @@
 #include <gdnsd/vscf.h>
 
 #include <stdbool.h>
+
+
+#if 0
 #include <pthread.h>
 
 typedef struct {
@@ -81,5 +84,5 @@ bool socks_sock_is_bound_to(const int sock, const dmn_anysin_t* addr);
 // if !soft: will log_fatal() if any fail
 F_NONNULL
 bool socks_daemon_check_all(socks_cfg_t* socks_cfg, bool soft);
-
+#endif
 #endif // GDNSD_SOCKS_H

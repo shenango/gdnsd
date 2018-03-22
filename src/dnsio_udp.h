@@ -17,6 +17,7 @@
  *
  */
 
+#if 0
 #ifndef GDNSD_DNSIO_UDP_H
 #define GDNSD_DNSIO_UDP_H
 
@@ -31,3 +32,4 @@ F_NONNULL F_NORETURN
 void* dnsio_udp_start(void* thread_asvoid);
 
 #endif // GDNSD_DNSIO_UDP_H
+#endif

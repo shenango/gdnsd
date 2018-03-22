@@ -152,58 +152,6 @@ static void usage(const char* argv0) {
 //     return NULL;
 // }
 
-F_NONNULL
-static void start_threads(socks_cfg_t* socks_cfg) {
-    // Block all signals using the pthreads interface while starting threads,
-    //  which causes them to inherit the same mask.
-    // sigset_t sigmask_all;
-    // sigfillset(&sigmask_all);
-    // sigset_t sigmask_prev;
-    // sigemptyset(&sigmask_prev);
-    // if(pthread_sigmask(SIG_SETMASK, &sigmask_all, &sigmask_prev))
-        // log_fatal("pthread_sigmask() failed");
-
-    // system scope scheduling, joinable threads
-    // pthread_attr_t attribs;
-    // pthread_attr_init(&attribs);
-    // pthread_attr_setdetachstate(&attribs, PTHREAD_CREATE_DETACHED);
-    // pthread_attr_setscope(&attribs, PTHREAD_SCOPE_SYSTEM);
-
-    int pthread_err;
-
-    for(unsigned i = 0; i < socks_cfg->num_dns_threads; i++) {
-        dns_thread_t* t = &socks_cfg->dns_threads[i];
-        if(t->is_udp)
-            pthread_err = thread_spawn(dnsio_udp_start, t);
-        else
-            dmn_assert(0);
-        // if(pthread_err)
-            // log_fatal("pthread_create() of DNS thread %u (for %s:%s) failed: %s",
-                // i, t->is_udp ? "UDP" : "TCP", dmn_logf_anysin(&t->ac->addr), dmn_logf_strerror(pthread_err));
-    }
-
-    // pthread_t zone_data_threadid;
-    // pthread_err = pthread_create(&zone_data_threadid, &attribs, &zone_data_runtime, NULL);
-    // if(pthread_err)
-        // log_fatal("pthread_create() of zone data thread failed: %s", dmn_logf_strerror(pthread_err));
-
-    // This waits for all of the stat structures to be allocated
-    //  by the i/o threads before continuing on.  They must be ready
-    //  before the monitoring thread starts below, as it will read
-    //  those stat structures
-    dnspacket_wait_stats(socks_cfg);
-
-    // pthread_t mon_threadid;
-    // pthread_err = pthread_create(&mon_threadid, &attribs, &mon_runtime, socks_cfg);
-    // if(pthread_err)
-    //     log_fatal("pthread_create() of monitoring thread failed: %s", dmn_logf_strerror(pthread_err));
-
-    // Restore the original mask in the main thread, so
-    //  we can continue handling signals like normal
-    // if(pthread_sigmask(SIG_SETMASK, &sigmask_prev, NULL))
-        // log_fatal("pthread_sigmask() failed");
-    // pthread_attr_destroy(&attribs);
-}
 
 static void memlock_rlimits(const bool started_as_root) {
 #ifdef RLIMIT_MEMLOCK
@@ -349,10 +297,42 @@ static action_t parse_args(const int argc, char** argv, cmdline_opts_t* copts) {
     usage(argv[0]);
 }
 
-static int argc;
+static void runtime_entry(void *arg);
+static int init_global(void);
+static int init_thread(void);
+static int init_late(void);
 
-static void _main(void *arg) {
-    char **argv = arg;
+
+static int init_global(void)
+{
+    return dnspacket_init_global();
+}
+
+static int init_thread(void)
+{
+    return dnspacket_init_thread();
+}
+
+static int init_late(void)
+{
+    return 0;
+}
+
+
+
+int main(int argc, char **argv) {
+
+    if (argc < 2) {
+        fprintf(stderr, "first arg must be shenango config file\n");
+        exit(-1);
+    }
+
+    // First arg - shenango conf:
+    char *cfgfile = argv[1];
+    argc--;
+    argv[1] = argv[0];
+    argv++;
+
     // Parse args, getting the config path
     //   returning the action.  Exits on cmdline errors,
     //   does not use libdmn assert/log stuff.
@@ -446,11 +426,11 @@ static void _main(void *arg) {
     }
 
     // Load full configuration and expose through the globals
-    socks_cfg_t* socks_cfg = socks_conf_load(cfg_root);
-    scfg = socks_cfg;
-    cfg_t* cfg = conf_load(cfg_root, socks_cfg, copts.force_zss, copts.force_zsd);
+    // socks_cfg_t* socks_cfg = socks_conf_load(cfg_root);
+    // scfg = socks_cfg;
+    cfg_t* cfg = conf_load(cfg_root, NULL, copts.force_zss, copts.force_zsd);
     gcfg = cfg;
-    vscf_destroy(cfg_root);
+    // vscf_destroy(cfg_root);
 
     // Set up and validate privdrop info if necc
     dmn_init3(cfg->username, (action == ACT_RESTART));
@@ -471,13 +451,13 @@ static void _main(void *arg) {
         memlock_rlimits(started_as_root);
 
     // Initialize DNS listening sockets, but do not bind() them yet
-    socks_dns_lsocks_init(socks_cfg);
+    // socks_dns_lsocks_init(socks_cfg);
 
     // init the stats summing/output code + listening sockets (again no bind yet)
     // statio_init(socks_cfg);
 
     // set up our pcall for socket binding later
-    unsigned bind_socks_funcidx = dmn_add_pcall(socks_helper_bind_all);
+    // unsigned bind_socks_funcidx = dmn_add_pcall(socks_helper_bind_all);
 
     dmn_fork();
 
@@ -497,8 +477,9 @@ static void _main(void *arg) {
             log_fatal("mlockall(MCL_CURRENT|MCL_FUTURE) failed: %s (you may need to disabled the lock_mem config option if your system or your ulimits do not allow it)",
                 dmn_logf_errno());
 
+
     // Initialize dnspacket stuff
-    dnspacket_global_setup(socks_cfg);
+    dnspacket_global_setup();
 
     // drop privs
     dmn_secure(cfg->weaker_security);
@@ -523,42 +504,42 @@ static void _main(void *arg) {
     //   if available.  If the previous instance also uses SO_REUSEPORT
     //   (gdnsd 2.x), then we should get success here and overlapping
     //   sockets before we kill the old daemon.
-    dmn_pcall(bind_socks_funcidx);
+    // dmn_pcall(bind_socks_funcidx);
 
     // validate the results of the above, softly
-    bool first_binds_failed = socks_daemon_check_all(socks_cfg, true);
+    // first_binds_failed = socks_daemon_check_all(socks_cfg, true);
 
     // if the first binds didn't work (probably lack of SO_REUSEPORT,
     //   either in general or just in the old 1.x daemon we're taking over),
     //   we have to stop the old daemon before binding again.
-    if(first_binds_failed) {
-        // Kills old daemon on the way, if we're restarting
-        dmn_acquire_pidfile();
+    // if(first_binds_failed) {
+    //     // Kills old daemon on the way, if we're restarting
+    //     dmn_acquire_pidfile();
 
-        // This re-attempts binding any specific sockets that failed the
-        //   first time around, e.g. in non-SO_REUSEPORT cases where we
-        //   had to wait on daemon death above
-        dmn_pcall(bind_socks_funcidx);
+    //     // This re-attempts binding any specific sockets that failed the
+    //     //   first time around, e.g. in non-SO_REUSEPORT cases where we
+    //     //   had to wait on daemon death above
+    //     dmn_pcall(bind_socks_funcidx);
 
-        // hard check this time - this function will fail fatally
-        //   if any sockets can't be acquired.
-        socks_daemon_check_all(socks_cfg, false);
-    }
+    //     // hard check this time - this function will fail fatally
+    //     //   if any sockets can't be acquired.
+    //     socks_daemon_check_all(socks_cfg, false);
+    // }
 
-    // Start up all of the UDP and TCP threads, each of
-    // which has all signals blocked and has its own
-    // event loop (libev for TCP, manual blocking loop for UDP)
-    // Also starts the zone data reload thread
-    // and the statio+monitoring thread
-    start_threads(socks_cfg);
 
+    runtime_set_initializers(init_global, init_thread, init_late);
+    return runtime_init(cfgfile, runtime_entry, NULL);
+}
+
+static void runtime_entry(void *arg) {
+    (void)(arg);
     // Notify the user that the listeners are up
     log_info("DNS listeners started");
 
     // If we succeeded at SO_REUSEPORT takeover earlier on the first
     //   bind() attempts, we still need to kill the old daemon (if restarting)
     //   at this point, since we didn't earlier for availability overlap.
-    if(!first_binds_failed)
+    // if()
         dmn_acquire_pidfile();
 
     // The signals we'll listen for below
@@ -580,6 +561,11 @@ static void _main(void *arg) {
     // we do this under blocking so that there's no racing with someone
     //  expecting correct signal actions after the starter exits
     dmn_finish();
+
+    struct udpaddr laddr = {0, 53};
+    udpspawner_t *spawner;
+
+    BUG_ON(udp_create_spawner(laddr, receive_packet, &spawner));
 
     waitgroup_t wg;
     waitgroup_init(&wg);
@@ -648,15 +634,4 @@ static void _main(void *arg) {
 
     // raise should not return
     dmn_assert(0);
-}
-
-int main(int argcount, char **argv) {
-    if (argcount < 2) {
-        fprintf(stderr, "need cfg file\n");
-        return 1;
-    }
-    char *cfg = argv[1];
-    argv[1] = argv[0];
-    argc = argcount - 1;
-    runtime_init(cfg, _main, argv + 1);
 }

@@ -17,6 +17,8 @@
  *
  */
 
+#include "shenango.h"
+
 #include <config.h>
 #include "dnspacket.h"
 
@@ -33,7 +35,7 @@
 
 #include <string.h>
 #include <stddef.h>
-#include <pthread.h>
+
 #include <time.h>
 
 typedef struct {
@@ -50,6 +52,11 @@ typedef struct {
 
 // per-thread packet context.
 typedef struct {
+
+    struct tcache_hdr hdr;
+
+    void *buf;
+
     // whether the thread using this context is a udp or tcp thread
     bool is_udp;
 
@@ -125,33 +132,29 @@ typedef struct {
     bool chaos;
 } dnsp_ctx_t;
 
-static pthread_mutex_t stats_init_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t stats_init_cond = PTHREAD_COND_INITIALIZER;
-static unsigned stats_initialized = 0;
 static unsigned result_v6_offset = 0;
 
-dnspacket_stats_t** dnspacket_stats;
+int kthreads = 0;
+static DEFINE_SPINLOCK(stat_init_lock);
+dnspacket_stats_t *dnspacket_stats[NCPU];
+__thread dnspacket_stats_t *stats;
+
+static struct tcache *ctx_tcache;
+static __thread struct tcache_perthread ctx_tcache_pt;
 
 // Allocates the array of pointers to stats structures, one per I/O thread
 // Called from main thread before I/O threads are spawned.
-void dnspacket_global_setup(const socks_cfg_t* socks_cfg) {
-    dnspacket_stats = xcalloc(socks_cfg->num_dns_threads, sizeof(dnspacket_stats_t*));
+void dnspacket_global_setup(void) {
     result_v6_offset = gdnsd_result_get_v6_offset();
 }
 
-// Called from main thread after starting all of the I/O threads,
-//  ensures they all finish allocating their stats and storing the pointers
-//  into dnspacket_stats before allowing the main thread to continue.
-void dnspacket_wait_stats(const socks_cfg_t* socks_cfg) {
-    const unsigned waitfor = socks_cfg->num_dns_threads;
-    pthread_mutex_lock(&stats_init_mutex);
-    while(stats_initialized < waitfor)
-        pthread_cond_wait(&stats_init_cond, &stats_init_mutex);
-    pthread_mutex_unlock(&stats_init_mutex);
-}
 
 void* dnspacket_ctx_init(const bool is_udp) {
     dnsp_ctx_t* ctx = xcalloc(1, sizeof(dnsp_ctx_t));
+
+    const size_t pgsz = 4096;
+    const unsigned max_rounded = ((gcfg->max_response + pgsz - 1) / pgsz) * pgsz;
+    ctx->buf = gdnsd_xpmalign(pgsz, max_rounded);
 
     ctx->rand_state = gdnsd_rand32_init();
     ctx->is_udp = is_udp;
@@ -164,20 +167,6 @@ void* dnspacket_ctx_init(const bool is_udp) {
     return ctx;
 }
 
-dnspacket_stats_t* dnspacket_stats_init(const unsigned this_threadnum, const bool is_udp) {
-
-    pthread_mutex_lock(&stats_init_mutex);
-
-    dnspacket_stats_t* stats = dnspacket_stats[this_threadnum] = xcalloc(1, sizeof(dnspacket_stats_t));
-    stats->is_udp = is_udp;
-    gdnsd_plugins_action_iothread_init(this_threadnum);
-    stats_initialized++;
-
-    pthread_cond_signal(&stats_init_cond);
-    pthread_mutex_unlock(&stats_init_mutex);
-
-    return stats;
-}
 
 F_NONNULL
 static void reset_context(dnsp_ctx_t* ctx) {
@@ -243,7 +232,7 @@ static unsigned parse_question(dnsp_ctx_t* ctx, uint8_t* lqname, const uint8_t* 
 
 // retval: true -> FORMERR, false -> OK
 F_NONNULL
-static bool handle_edns_client_subnet(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, unsigned opt_len, const uint8_t* opt_data) {
+static bool handle_edns_client_subnet(dnsp_ctx_t* ctx, unsigned opt_len, const uint8_t* opt_data) {
     bool rv = false;
 
     do {
@@ -303,10 +292,10 @@ static bool handle_edns_client_subnet(dnsp_ctx_t* ctx, dnspacket_stats_t* stats,
 
 // retval: true -> FORMERR, false -> OK
 F_NONNULL
-static bool handle_edns_option(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, unsigned opt_code, unsigned opt_len, const uint8_t* opt_data) {
+static bool handle_edns_option(dnsp_ctx_t* ctx, unsigned opt_code, unsigned opt_len, const uint8_t* opt_data) {
     bool rv = false;
     if((opt_code == EDNS_CLIENTSUB_OPTCODE) && gcfg->edns_client_subnet)
-        rv = handle_edns_client_subnet(ctx, stats, opt_len, opt_data);
+        rv = handle_edns_client_subnet(ctx, opt_len, opt_data);
     else
         log_devdebug("Unknown EDNS option code: %x", opt_code);
 
@@ -315,7 +304,7 @@ static bool handle_edns_option(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, unsign
 
 // retval: true -> FORMERR, false -> OK
 F_NONNULL
-static bool handle_edns_options(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, unsigned rdlen, const uint8_t* rdata) {
+static bool handle_edns_options(dnsp_ctx_t* ctx, unsigned rdlen, const uint8_t* rdata) {
     dmn_assert(rdlen);
 
     bool rv = false;
@@ -335,7 +324,7 @@ static bool handle_edns_options(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, unsig
             rv = true;
             break;
         }
-        if(handle_edns_option(ctx, stats, opt_code, opt_dlen, rdata)) {
+        if(handle_edns_option(ctx, opt_code, opt_dlen, rdata)) {
             rv = true; // option handler indicated FORMERR
             break;
         }
@@ -355,7 +344,7 @@ typedef enum {
 } rcode_rv_t;
 
 F_NONNULL
-static rcode_rv_t parse_optrr(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, const wire_dns_rr_opt_t* opt, const dmn_anysin_t* asin V_UNUSED, const unsigned packet_len, const unsigned offset) {
+static rcode_rv_t parse_optrr(dnsp_ctx_t* ctx, const wire_dns_rr_opt_t* opt, const dmn_anysin_t* asin V_UNUSED, const unsigned packet_len, const unsigned offset) {
     rcode_rv_t rcode = DECODE_OK;
     ctx->use_edns = true;            // send OPT RR with response
     stats_own_inc(&stats->edns);
@@ -383,7 +372,7 @@ static rcode_rv_t parse_optrr(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, const w
                 log_devdebug("Received EDNS OPT RR with options data longer than packet length from %s", dmn_logf_anysin(asin));
                 rcode = DECODE_FORMERR;
             }
-            else if(handle_edns_options(ctx, stats, rdlen, opt->rdata)) {
+            else if(handle_edns_options(ctx, rdlen, opt->rdata)) {
                 rcode = DECODE_FORMERR;
             }
         }
@@ -397,7 +386,7 @@ static rcode_rv_t parse_optrr(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, const w
 }
 
 F_NONNULL
-static rcode_rv_t decode_query(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, uint8_t* lqname, unsigned* question_len_ptr, const unsigned packet_len, const dmn_anysin_t* asin) {
+static rcode_rv_t decode_query(dnsp_ctx_t* ctx, uint8_t* lqname, unsigned* question_len_ptr, const unsigned packet_len, const dmn_anysin_t* asin) {
     dmn_assert(ctx->packet);
 
     rcode_rv_t rcode = DECODE_OK;
@@ -484,7 +473,7 @@ static rcode_rv_t decode_query(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, uint8_
             && likely(packet_len >= (offset + sizeof_optrr + 1))
             && likely(packet[offset] == '\0')
             && likely(DNS_OPTRR_GET_TYPE(opt) == DNS_TYPE_OPT)) {
-            rcode = parse_optrr(ctx, stats, opt, asin, packet_len, offset + 1);
+            rcode = parse_optrr(ctx, opt, asin, packet_len, offset + 1);
         }
         else if(likely(ctx->is_udp)) { // No valid EDNS OPT RR in request, UDP
             ctx->this_max_response = 512;
@@ -1761,7 +1750,7 @@ static const ltree_rrset_t* process_dync(dnsp_ctx_t* ctx, const ltree_rrset_dync
 }
 
 F_NONNULL
-static unsigned answer_from_db(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, const uint8_t* qname, unsigned offset) {
+static unsigned answer_from_db(dnsp_ctx_t* ctx, const uint8_t* qname, unsigned offset) {
     dmn_assert(offset);
 
     const unsigned first_offset = offset;
@@ -1883,7 +1872,7 @@ static unsigned answer_from_db(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, const 
 }
 
 F_NONNULL
-static unsigned answer_from_db_outer(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, uint8_t* qname, unsigned offset) {
+static unsigned answer_from_db_outer(dnsp_ctx_t* ctx, uint8_t* qname, unsigned offset) {
     dmn_assert(offset);
 
     if(*qname != 1) {
@@ -1897,7 +1886,7 @@ static unsigned answer_from_db_outer(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, 
     const unsigned full_trunc_offset = offset;
 
     wire_dns_header_t* res_hdr = (wire_dns_header_t*)ctx->packet;
-    offset = answer_from_db(ctx, stats, qname, offset);
+    offset = answer_from_db(ctx, qname, offset);
 
     // Check for truncation (ANY-over-UDP truncation, or true overflow w/ just ans, auth, and glue)
     if(unlikely(
@@ -1931,18 +1920,18 @@ static unsigned answer_from_db_outer(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, 
     return offset;
 }
 
-unsigned process_dns_query(void* ctx_asvoid, dnspacket_stats_t* stats, const dmn_anysin_t* asin, uint8_t* packet, const unsigned packet_len) {
+unsigned process_dns_query(void* ctx_asvoid, const dmn_anysin_t* asin, uint8_t* packet, const unsigned packet_len) {
     dnsp_ctx_t* ctx = ctx_asvoid;
     reset_context(ctx);
     ctx->packet = packet;
 
-/*
+
     log_devdebug("Processing %sv%u DNS query of length %u from %s",
         (ctx->is_udp ? "UDP" : "TCP"),
         (asin->sa.sa_family == AF_INET6) ? 6 : 4,
         packet_len,
         dmn_logf_anysin(asin));
-*/
+
 
     if(asin->sa.sa_family == AF_INET6)
         stats_own_inc(&stats->v6);
@@ -1950,7 +1939,7 @@ unsigned process_dns_query(void* ctx_asvoid, dnspacket_stats_t* stats, const dmn
     uint8_t lqname[256];
     unsigned question_len = 0;
 
-    const rcode_rv_t status = decode_query(ctx, stats, lqname, &question_len, packet_len, asin);
+    const rcode_rv_t status = decode_query(ctx, lqname, &question_len, packet_len, asin);
 
     if(status == DECODE_IGNORE) {
         stats_own_inc(&stats->dropped);
@@ -1979,7 +1968,7 @@ unsigned process_dns_query(void* ctx_asvoid, dnspacket_stats_t* stats, const dmn
         hdr->flags2 = DNS_RCODE_NOERROR;
         if(likely(!ctx->chaos)) {
             memcpy(&ctx->client_info.dns_source, asin, sizeof(dmn_anysin_t));
-            res_offset = answer_from_db_outer(ctx, stats, lqname, res_offset);
+            res_offset = answer_from_db_outer(ctx, lqname, res_offset);
         }
         else {
             ctx->ancount = 1;
@@ -2051,4 +2040,71 @@ unsigned process_dns_query(void* ctx_asvoid, dnspacket_stats_t* stats, const dmn
     gdnsd_put_una16(htons(ctx->arcount), &hdr->arcount);
 
     return res_offset;
+}
+
+
+static void ctx_tcache_free(struct tcache *tc, int nr, void **items)
+{
+    BUG();
+}
+
+static int ctx_tcache_alloc(struct tcache *tc, int nr, void **items)
+{
+    int i;
+
+    for (i = 0; i < nr; i++)
+        items[i] = dnspacket_ctx_init(true);
+
+    return 0;
+}
+
+static const struct tcache_ops ctx_tcache_ops = {
+    .alloc = ctx_tcache_alloc, .free = ctx_tcache_free,
+};
+
+int dnspacket_init_global(void) {
+    ctx_tcache = tcache_create("ctx_tcache", &ctx_tcache_ops,
+                                TCACHE_DEFAULT_MAG_SIZE, sizeof(dnsp_ctx_t));
+    BUG_ON(ctx_tcache == NULL);
+    return 0;
+}
+
+int dnspacket_init_thread(void) {
+
+    stats = xcalloc(1, sizeof(dnspacket_stats_t));
+
+    spin_lock(&stat_init_lock);
+    BUG_ON(kthreads == ARRAY_SIZE(dnspacket_stats));
+    dnspacket_stats[kthreads++] = stats;
+    spin_unlock(&stat_init_lock);
+
+    stats->is_udp = true;
+    // gdnsd_plugins_action_iothread_init(this_threadnum);
+
+    tcache_init_perthread(ctx_tcache, &ctx_tcache_pt);
+
+    return 0;
+}
+
+void receive_packet(struct udp_spawn_data *d)
+{
+    dnsp_ctx_t *ctx = tcache_alloc(&ctx_tcache_pt);
+    if (unlikely(!ctx))
+        goto done;
+
+    memcpy(ctx->buf, d->buf, d->len);
+    dmn_anysin_t asin;
+    asin.sin.sin_family = AF_INET;
+    asin.sin.sin_port = htons(d->raddr.port);
+    asin.sin.sin_addr.s_addr = htonl(d->raddr.ip);
+    asin.len = sizeof(struct sockaddr_in);
+
+    size_t resp_len = process_dns_query(ctx, &asin, ctx->buf, d->len);
+    if (likely(resp_len))
+        udp_respond(ctx->buf, resp_len, d);
+
+    tcache_free(&ctx_tcache_pt, ctx);
+
+done:
+    udp_spawn_data_release(d->release_data);
 }

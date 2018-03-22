@@ -17,6 +17,8 @@
  *
  */
 
+#if 0
+
 #include <config.h>
 #include "dnsio_udp.h"
 
@@ -551,3 +553,5 @@ void* dnsio_udp_start(void* thread_asvoid) {
         mainloop(t->sock, dnsp_ctx, stats, need_cmsg);
     }
 }
+
+#endif

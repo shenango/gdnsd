@@ -74,18 +74,22 @@ typedef struct {
 } dnspacket_stats_t;
 
 F_HOT F_NONNULL
-unsigned process_dns_query(void* ctx_asvoid, dnspacket_stats_t* stats, const dmn_anysin_t* asin, uint8_t* packet, const unsigned packet_len);
+unsigned process_dns_query(void* ctx_asvoid, const dmn_anysin_t* asin, uint8_t* packet, const unsigned packet_len);
 
 F_WUNUSED
-dnspacket_stats_t* dnspacket_stats_init(const unsigned this_threadnum, const bool is_udp);
+int dnspacket_init_thread(void);
+F_WUNUSED
+int dnspacket_init_global(void);
+
+void receive_packet(struct udp_spawn_data *d);
+
 F_WUNUSED
 void* dnspacket_ctx_init(const bool is_udp);
 
 F_NONNULL
-void dnspacket_global_setup(const socks_cfg_t* socks_cfg);
-F_NONNULL
-void dnspacket_wait_stats(const socks_cfg_t* socks_cfg);
+void dnspacket_global_setup(void);
 
-extern dnspacket_stats_t** dnspacket_stats;
+extern dnspacket_stats_t *dnspacket_stats[];
+extern __thread dnspacket_stats_t *local_stat;
 
 #endif // GDNSD_DNSPACKET_H

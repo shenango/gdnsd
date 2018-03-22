@@ -16,6 +16,7 @@
  * along with gdnsd.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#if 0
 
 #include <config.h>
 #include "socks.h"
@@ -480,3 +481,4 @@ void socks_dns_lsocks_init(socks_cfg_t* socks_cfg) {
             dmn_assert(0);
     }
 }
+#endif
