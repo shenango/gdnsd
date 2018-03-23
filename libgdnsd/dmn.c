@@ -855,8 +855,8 @@ void dmn_fork(void) {
     //   relative configdir paths on the commandline because
     //   init1() happens after dealing with those in conf_load(), etc
     // Maybe this can be reconsidered during a later refactor.
-    if(chdir("/"))
-        dmn_log_fatal("chdir(/) failed: %s", dmn_logf_errno());
+    // if(chdir("/"))
+        // dmn_log_fatal("chdir(/) failed: %s", dmn_logf_errno());
 
     // whether this invocation needs a forked helper process.
     // In background cases, we always need this to hold the

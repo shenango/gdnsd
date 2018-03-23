@@ -17,6 +17,8 @@
  *
  */
 
+#include "../src/shenango.h"
+
 #include <config.h>
 #include <gdnsd/misc.h>
 #include <gdnsd-prot/misc.h>
@@ -39,14 +41,14 @@
 #include <sys/types.h>
 #include <stddef.h>
 #include <dirent.h>
-#include <pthread.h>
+// #include <pthread.h>
 #include <sys/wait.h>
 #include <signal.h>
 #include <math.h>
 
-#ifdef HAVE_PTHREAD_NP_H
-#  include <pthread_np.h>
-#endif
+// #ifdef HAVE_PTHREAD_NP_H
+// #  include <pthread_np.h>
+// #endif
 
 /* misc */
 
@@ -98,19 +100,19 @@ char* gdnsd_str_combine_n(const unsigned count, ...) {
     return out;
 }
 
-void gdnsd_thread_setname(const char* n V_UNUSED) {
-    #if defined HAVE_PTHREAD_SETNAME_NP_2
-        pthread_setname_np(pthread_self(), n);
-    #elif defined HAVE_PTHREAD_SET_NAME_NP_2
-        pthread_set_name_np(pthread_self(), n);
-    #elif defined HAVE_PTHREAD_SETNAME_NP_1
-        pthread_setname_np(n);
-    #elif defined HAVE_PTHREAD_SETNAME_NP_3
-        pthread_setname_np(pthread_self(), n, NULL);
-    #endif
-}
+// void gdnsd_thread_setname(const char* n V_UNUSED) {
+//     #if defined HAVE_PTHREAD_SETNAME_NP_2
+//         pthread_setname_np(pthread_self(), n);
+//     #elif defined HAVE_PTHREAD_SET_NAME_NP_2
+//         pthread_set_name_np(pthread_self(), n);
+//     #elif defined HAVE_PTHREAD_SETNAME_NP_1
+//         pthread_setname_np(n);
+//     #elif defined HAVE_PTHREAD_SETNAME_NP_3
+//         pthread_setname_np(pthread_self(), n, NULL);
+//     #endif
+// }
 
-static pthread_mutex_t rand_init_lock = PTHREAD_MUTEX_INITIALIZER;
+static mutex_t rand_init_lock;
 static gdnsd_rstate64_t rand_init_state = { 0, 0, 0, 0, 0, 0 };
 
 typedef union {
@@ -196,7 +198,7 @@ gdnsd_rstate64_t* gdnsd_rand64_init(void) {
     unsigned throw_away;
     gdnsd_rstate64_t* newstate = xmalloc(sizeof(*newstate));
 
-    pthread_mutex_lock(&rand_init_lock);
+    mutex_lock(&rand_init_lock);
     newstate->x  = gdnsd_rand64_get(&rand_init_state);
     do {
         newstate->y = gdnsd_rand64_get(&rand_init_state);
@@ -206,7 +208,7 @@ gdnsd_rstate64_t* gdnsd_rand64_init(void) {
     newstate->z2 = gdnsd_rand64_get(&rand_init_state);
     newstate->c2 = gdnsd_rand64_get(&rand_init_state);
     throw_away   = gdnsd_rand64_get(&rand_init_state);
-    pthread_mutex_unlock(&rand_init_lock);
+    mutex_unlock(&rand_init_lock);
 
     throw_away &= THROW_MASK;
     throw_away += THROW_MIN;
@@ -219,7 +221,7 @@ gdnsd_rstate32_t* gdnsd_rand32_init(void) {
     unsigned throw_away;
     gdnsd_rstate32_t* newstate = xmalloc(sizeof(*newstate));
 
-    pthread_mutex_lock(&rand_init_lock);
+    mutex_lock(&rand_init_lock);
     newstate->x = gdnsd_rand64_get(&rand_init_state);
     do {
         newstate->y = gdnsd_rand64_get(&rand_init_state);
@@ -228,7 +230,7 @@ gdnsd_rstate32_t* gdnsd_rand32_init(void) {
     newstate->w = gdnsd_rand64_get(&rand_init_state);
     newstate->c = 0;
     throw_away  = gdnsd_rand64_get(&rand_init_state);
-    pthread_mutex_unlock(&rand_init_lock);
+    mutex_unlock(&rand_init_lock);
 
     throw_away &= THROW_MASK;
     throw_away += THROW_MIN;
@@ -353,4 +355,10 @@ unsigned gdnsd_uscale_ceil(unsigned v, double s) {
     const double sv = ceil(v * s);
     dmn_assert(sv <= (double)v);
     return (unsigned)sv;
+}
+
+int misc_init_late(void)
+{
+    mutex_init(&rand_init_lock);
+    return 0;
 }

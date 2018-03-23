@@ -22,4 +22,6 @@
 
 void gdnsd_rand_meta_init(void);
 
+int misc_init_late(void);
+
 #endif // GDNSD_MISC_PRIV_H

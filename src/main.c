@@ -46,7 +46,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
+// #include <pthread.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <sys/mman.h>
@@ -313,9 +313,11 @@ static int init_thread(void)
     return dnspacket_init_thread();
 }
 
+int misc_init_late(void);
+
 static int init_late(void)
 {
-    return 0;
+    return misc_init_late();
 }
 
 

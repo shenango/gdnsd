@@ -25,6 +25,9 @@
 // Kill+Reap pids from gdnsd_register_child_pid()
 void gdnsd_kill_registered_children(void);
 
+int misc_init_late(void);
+
+
 #pragma GCC visibility pop
 
 #endif // GDNSD_MISC_PROT_H

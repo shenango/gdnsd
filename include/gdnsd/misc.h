@@ -29,6 +29,9 @@
 #include <dirent.h>
 #include <sys/types.h>
 
+
+int misc_init_late(void);
+
 typedef struct _gdnsd_rstate32_t {
     uint32_t x;
     uint32_t y;

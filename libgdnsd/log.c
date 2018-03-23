@@ -34,7 +34,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <stdarg.h>
-#include <pthread.h>
+// #include <pthread.h>
 
 static const char generic_nullstr[] = "(null)";
 
