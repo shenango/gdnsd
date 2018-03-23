@@ -304,7 +304,7 @@ static void mainloop(const int fd, void* dnsp_ctx, dnspacket_stats_t* stats, con
     msg_hdr.msg_iovlen     = 1;
     msg_hdr.msg_control    = use_cmsg ? cmsg_buf : NULL;
 
-#if GDNSD_B_QSBR
+#if 0
     const struct timeval tmout_short = { .tv_sec = 0, .tv_usec = PRCU_DELAY_US };
     const struct timeval tmout_inf   = { .tv_sec = 0, .tv_usec = 0 };
     if(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tmout_short, sizeof(tmout_short)))
@@ -320,7 +320,7 @@ static void mainloop(const int fd, void* dnsp_ctx, dnspacket_stats_t* stats, con
         msg_hdr.msg_namelen    = DMN_ANYSIN_MAXLEN;
         msg_hdr.msg_flags      = 0;
 
-#if GDNSD_B_QSBR
+#if 0
         if(likely(is_online)) {
             gdnsd_prcu_rdr_quiesce();
             recvmsg_rv = recvmsg(fd, &msg_hdr, 0);

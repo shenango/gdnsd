@@ -880,6 +880,7 @@ void dmn_fork(void) {
     pipe_create(state.pipe_from_helper);
 
     // Fork for the first time...
+    dmn_assert(0);
     const pid_t first_fork_pid = fork();
     if(first_fork_pid == -1)
         dmn_log_fatal("fork() failed: %s", dmn_logf_errno());

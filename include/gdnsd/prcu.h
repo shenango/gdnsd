@@ -32,7 +32,7 @@ extern pthread_rwlock_t gdnsd_prcu_rwlock_;
 #pragma GCC visibility pop
 
 // comes from config.h in-tree, or above if out-of-tree
-#if GDNSD_B_QSBR
+#if 0
 
 // in-tree we define _LGPL_SOURCE anyways which is a superset of
 // URCU_INLINE_SMALL_FUNCTIONS, but this will help for consumers
