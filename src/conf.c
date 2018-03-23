@@ -105,24 +105,24 @@ static bool bad_key(const char* key, unsigned klen V_UNUSED, vscf_data_t* d V_UN
     log_fatal("Invalid %s key '%s'", which, key);
 }
 
-F_NONNULLX(2)
-static void plugin_load_and_configure(const unsigned num_dns_threads, const char* name, vscf_data_t* pconf) {
-    if(pconf && !vscf_is_hash(pconf))
-        log_fatal("Config data for plugin '%s' must be a hash", name);
+// F_NONNULLX(2)
+// static void plugin_load_and_configure(const unsigned num_dns_threads, const char* name, vscf_data_t* pconf) {
+//     if(pconf && !vscf_is_hash(pconf))
+//         log_fatal("Config data for plugin '%s' must be a hash", name);
 
-    plugin_t* plugin = gdnsd_plugin_find_or_load(name);
-    if(plugin->load_config) {
-        plugin->load_config(pconf, num_dns_threads);
-        plugin->config_loaded = true;
-    }
-}
+//     plugin_t* plugin = gdnsd_plugin_find_or_load(name);
+//     if(plugin->load_config) {
+//         plugin->load_config(pconf, num_dns_threads);
+//         plugin->config_loaded = true;
+//     }
+// }
 
-F_NONNULL
-static bool load_plugin_iter(const char* name, unsigned namelen V_UNUSED, vscf_data_t* pconf, const void* scfg_asvoid) {
-    const socks_cfg_t* socks_cfg = scfg_asvoid;
-    plugin_load_and_configure(socks_cfg->num_dns_threads, name, pconf);
-    return true;
-}
+// F_NONNULL
+// static bool load_plugin_iter(const char* name, unsigned namelen V_UNUSED, vscf_data_t* pconf, const void* scfg_asvoid) {
+//     const socks_cfg_t* socks_cfg = scfg_asvoid;
+//     plugin_load_and_configure(socks_cfg->num_dns_threads, name, pconf);
+//     return true;
+// }
 
 // These defines are for the repetitive case of simple checking/assignment
 //  of certain types directly into simple cfg variables
@@ -291,24 +291,24 @@ cfg_t* conf_load(const vscf_data_t* cfg_root, const socks_cfg_t* socks_cfg, cons
 
     // Load plugins
     vscf_data_t* plugins_hash = cfg_root ? vscf_hash_get_data_byconstkey(cfg_root, "plugins", true) : NULL;
-    if(plugins_hash) {
-        if(!vscf_is_hash(plugins_hash))
-            log_fatal("Config setting 'plugins' must have a hash value");
-        // plugin_geoip is considered a special-case meta-plugin.  If it's present,
-        //   it always gets loaded before others.  This is because it can create
-        //   resource config for other plugins.  This is a poor way to do it, but I imagine
-        //   the list of meta-plugins will remain short and in-tree.
-        vscf_data_t* geoplug = vscf_hash_get_data_byconstkey(plugins_hash, "geoip", true);
-        if(geoplug)
-            plugin_load_and_configure(socks_cfg->num_dns_threads, "geoip", geoplug);
-        // ditto for "metafo"
-        // Technically, geoip->metafo synthesis will work, but not metafo->geoip synthesis.
-        // Both can reference each other directly (%plugin!resource)
-        vscf_data_t* metaplug = vscf_hash_get_data_byconstkey(plugins_hash, "metafo", true);
-        if(metaplug)
-            plugin_load_and_configure(socks_cfg->num_dns_threads, "metafo", metaplug);
-        vscf_hash_iterate_const(plugins_hash, true, load_plugin_iter, socks_cfg);
-    }
+    // if(plugins_hash) {
+    //     if(!vscf_is_hash(plugins_hash))
+    //         log_fatal("Config setting 'plugins' must have a hash value");
+    //     // plugin_geoip is considered a special-case meta-plugin.  If it's present,
+    //     //   it always gets loaded before others.  This is because it can create
+    //     //   resource config for other plugins.  This is a poor way to do it, but I imagine
+    //     //   the list of meta-plugins will remain short and in-tree.
+    //     vscf_data_t* geoplug = vscf_hash_get_data_byconstkey(plugins_hash, "geoip", true);
+    //     if(geoplug)
+    //         plugin_load_and_configure(socks_cfg->num_dns_threads, "geoip", geoplug);
+    //     // ditto for "metafo"
+    //     // Technically, geoip->metafo synthesis will work, but not metafo->geoip synthesis.
+    //     // Both can reference each other directly (%plugin!resource)
+    //     vscf_data_t* metaplug = vscf_hash_get_data_byconstkey(plugins_hash, "metafo", true);
+    //     if(metaplug)
+    //         plugin_load_and_configure(socks_cfg->num_dns_threads, "metafo", metaplug);
+    //     vscf_hash_iterate_const(plugins_hash, true, load_plugin_iter, socks_cfg);
+    // }
 
     // Any plugins loaded via the plugins hash above will already have had load_config() called
     //   on them.  This calls it (with a NULL config hash argument) for any plugins that were
@@ -316,7 +316,7 @@ cfg_t* conf_load(const vscf_data_t* cfg_root, const socks_cfg_t* socks_cfg, cons
     // Because of the possibility of mixed plugins and the configuration ordering above for
     //    meta-plugins, this must happen at this sequential point (after plugins_hash processing,
     //    but before stypes_p2())
-    gdnsd_plugins_configure_all(socks_cfg->num_dns_threads);
+    // gdnsd_plugins_configure_all(socks_cfg->num_dns_threads);
 
     // Phase 2 of service_types config
     // gdnsd_mon_cfg_stypes_p2(stypes_cfg);

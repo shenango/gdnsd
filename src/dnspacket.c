@@ -1936,13 +1936,13 @@ unsigned process_dns_query(void* ctx_asvoid, dnspacket_stats_t* stats, const dmn
     reset_context(ctx);
     ctx->packet = packet;
 
-/*
+
     log_devdebug("Processing %sv%u DNS query of length %u from %s",
         (ctx->is_udp ? "UDP" : "TCP"),
         (asin->sa.sa_family == AF_INET6) ? 6 : 4,
         packet_len,
         dmn_logf_anysin(asin));
-*/
+
 
     if(asin->sa.sa_family == AF_INET6)
         stats_own_inc(&stats->v6);
