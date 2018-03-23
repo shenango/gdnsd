@@ -1774,7 +1774,7 @@ static unsigned answer_from_db(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, const 
     ltree_dname_status_t status = DNAME_NOAUTH;
     unsigned auth_depth;
 
-    gdnsd_prcu_rdr_lock();
+    // gdnsd_prcu_rdr_lock();
 
     zone_t* query_zone = ztree_find_zone_for(qname, &auth_depth);
 
@@ -1877,7 +1877,7 @@ static unsigned answer_from_db(dnsp_ctx_t* ctx, dnspacket_stats_t* stats, const 
         }
     }
 
-    gdnsd_prcu_rdr_unlock();
+    // gdnsd_prcu_rdr_unlock();
 
     return offset;
 }
