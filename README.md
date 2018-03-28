@@ -1,3 +1,14 @@
+## Setting up
+
+- `apt install ragel libev-dev`
+- `autoreconf --install`
+- `./configure --with-rundir=$PWD/run  --without-urcu --prefix=$PWD/build/ --with-shenango=<shenango repo dir>`
+- `make -j install`
+- `mkdir -p $PWD/run/gdnsd $PWD/build/var/lib/gdnsd $PWD/build/etc/gdnsd/zones`
+- `gunzip -c com.gz > $PWD/build/etc/gdnsd/zones/com`
+- `build/sbin/gdnsd <shenango cfg file> -f start`
+
+
 [![Build Status](https://travis-ci.org/gdnsd/gdnsd.png)](https://travis-ci.org/gdnsd/gdnsd)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/760/badge.svg)](https://scan.coverity.com/projects/760)
 [![Coverage Status](https://coveralls.io/repos/gdnsd/gdnsd/badge.svg?branch=master&service=github)](https://coveralls.io/github/gdnsd/gdnsd?branch=master)
