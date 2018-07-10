@@ -564,7 +564,7 @@ static void runtime_entry(void *arg) {
     //  expecting correct signal actions after the starter exits
     dmn_finish();
 
-    struct udpaddr laddr = {0, 53};
+    struct netaddr laddr = {0, 53};
     udpspawner_t *spawner;
 
     BUG_ON(udp_create_spawner(laddr, receive_packet, &spawner));
